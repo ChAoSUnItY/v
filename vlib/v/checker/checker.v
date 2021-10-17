@@ -7784,6 +7784,7 @@ pub fn (mut c Checker) map_init(mut node ast.MapInit) ast.Type {
 			node.typ = c.expected_type
 			node.key_type = info.key_type
 			node.value_type = info.value_type
+			c.check_map_key_type(node)
 			return node.typ
 		} else {
 			c.error('invalid empty map initilization syntax, use e.g. map[string]int{} instead',
@@ -7797,6 +7798,7 @@ pub fn (mut c Checker) map_init(mut node ast.MapInit) ast.Type {
 		c.ensure_type_exists(info.value_type, node.pos) or {}
 		node.key_type = c.unwrap_generic(info.key_type)
 		node.value_type = c.unwrap_generic(info.value_type)
+		c.check_map_key_type(node)
 		return node.typ
 	}
 	if node.keys.len > 0 && node.vals.len > 0 {
@@ -7852,32 +7854,37 @@ pub fn (mut c Checker) map_init(mut node ast.MapInit) ast.Type {
 		node.typ = map_type
 		node.key_type = key0_type
 		node.value_type = val0_type
+		c.check_map_key_type(node)
 		return map_type
 	}
+	c.check_map_key_type(node)
+	return node.typ
+}
+
+pub fn (mut c Checker) check_map_key_type(node ast.MapInit) {
 	sym := c.table.get_final_type_symbol(node.key_type)
 	if sym.kind == .struct_ {
 		hash_fn := sym.find_method('hash') or {
 			c.error('a struct must have a `hash()` method for map to hash', node.pos)
-			return node.typ
+			return
 		}
 		if hash_fn.return_type.has_flag(.optional) {
-			c.error('method `hash()` must not return optional', node.pos)
+			c.error('method `hash()` of key type `$sym.name` must not return optional', node.pos)
 		}
 		if hash_fn.params.len != 1 {
-			c.error('method `hash()` must have 0 parameters', node.pos)
+			c.error('method `hash()` of key type `$sym.name` must have 0 parameters', node.pos)
 		}
 		clone_fn := sym.find_method('clone') or {
 			c.error('a struct must have a `clone()` method for map to clone', node.pos)
-			return node.typ
+			return
 		}
 		if clone_fn.return_type.has_flag(.optional) {
-			c.error('method `clone()` must not return optional', node.pos)
+			c.error('method `clone()` of key type `$sym.name` must not return optional', node.pos)
 		}
 		if clone_fn.params.len != 1 {
-			c.error('method `clone()` must have 0 parameters', node.pos)
+			c.error('method `clone()` of key type `$sym.name` must have 0 parameters', node.pos)
 		}
 	}
-	return node.typ
 }
 
 // call this *before* calling error or warn

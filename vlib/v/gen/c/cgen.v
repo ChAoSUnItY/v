@@ -3598,6 +3598,14 @@ fn (mut g Gen) map_fn_ptrs(key_typ ast.TypeSymbol) (string, string, string, stri
 			clone_fn = '&map_clone_string'
 			free_fn = '&map_free_string'
 		}
+		.struct_ {
+			typ_name := g.typ(key_typ.idx)
+			struct_name := typ_name.replace_each(['*', '', '.', '__'])
+			hash_fn = '&${struct_name}_hash'
+			key_eq_fn = '&${g.gen_struct_equality_fn(key_typ.idx)}_struct_eq'
+			clone_fn = '&${struct_name}_clone'
+			free_fn = '&${g.gen_free_method_for_type(key_typ.idx)}'
+		}
 		else {
 			verror('map key type not supported')
 		}

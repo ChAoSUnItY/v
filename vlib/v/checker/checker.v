@@ -7854,6 +7854,29 @@ pub fn (mut c Checker) map_init(mut node ast.MapInit) ast.Type {
 		node.value_type = val0_type
 		return map_type
 	}
+	sym := c.table.get_final_type_symbol(node.key_type)
+	if sym.kind == .struct_ {
+		hash_fn := sym.find_method('hash') or {
+			c.error('a struct must have a `hash()` method for map to hash', node.pos)
+			return node.typ
+		}
+		if hash_fn.return_type.has_flag(.optional) {
+			c.error('method `hash()` must not return optional', node.pos)
+		}
+		if hash_fn.params.len != 1 {
+			c.error('method `hash()` must have 0 parameters', node.pos)
+		}
+		clone_fn := sym.find_method('clone') or {
+			c.error('a struct must have a `clone()` method for map to clone', node.pos)
+			return node.typ
+		}
+		if clone_fn.return_type.has_flag(.optional) {
+			c.error('method `clone()` must not return optional', node.pos)
+		}
+		if clone_fn.params.len != 1 {
+			c.error('method `clone()` must have 0 parameters', node.pos)
+		}
+	}
 	return node.typ
 }
 
